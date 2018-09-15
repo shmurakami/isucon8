@@ -298,8 +298,8 @@ function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = n
     // zero fill
     $event['total'] = 0;
     $event['remains'] = 0;
-
     $reservationCounts = $dbh->select_all('SELECT count(*) as reservedCount,rank,price FROM reservations join sheets on reservations.sheet_id = sheets.id WHERE event_id = ? AND canceled_at IS NULL group by rank', $event_id);
+    $event['id'] = (int)$event['id'];
 
     $sheet = [
         'S' => [
