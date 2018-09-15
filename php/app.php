@@ -301,7 +301,30 @@ function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = n
 
     $reservationCounts = $dbh->select_all('SELECT count(*) as reservedCount,rank,price FROM reservations join sheets on reservations.sheet_id = sheets.id WHERE event_id = ? AND canceled_at IS NULL group by rank', $event_id);
 
-    $sheet = [];
+    $sheet = [
+        'S' =>[
+            'total' => 50,
+            'remains' => 50,
+            'price' => $event['price'] + 5000
+        ],
+        'A' =>[
+            'total' => 150,
+            'remains' => 150,
+            'price' => $event['price'] + 3000
+        ],
+        'B' =>[
+            'total' => 350,
+            'remains' => 350,
+            'price' => $event['price'] + 1000
+        ],
+        'C' =>[
+            'total' => 500,
+            'remains' => 500,
+            'price' => $event['price']
+        ]
+
+    ];
+
     $totalRemains = 0;
     foreach ($reservationCounts as $reservationCount) {
         if ($reservationCount['rank'] === 'S') {
