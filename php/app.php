@@ -327,7 +327,7 @@ function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $
         ++$event['total'];
         ++$event['sheets'][$sheet['rank']]['total'];
 
-        $reservation = $dbh->select_row('SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL GROUP BY event_id, sheet_id HAVING reserved_at = MIN(reserved_at)', $event['id'], $sheet['id']);
+        $reservation = $dbh->select_row('SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL', $event['id'], $sheet['id']);
         if ($reservation) {
             $sheet['mine'] = $login_user_id && $reservation['user_id'] == $login_user_id;
             $sheet['reserved'] = true;
@@ -435,7 +435,7 @@ $app->delete('/api/events/{id}/sheets/{ranks}/{num}/reservation', function (Requ
 
     $this->dbh->beginTransaction();
     try {
-        $reservation = $this->dbh->select_row('SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL GROUP BY event_id HAVING reserved_at = MIN(reserved_at) FOR UPDATE', $event['id'], $sheet['id']);
+        $reservation = $this->dbh->select_row('SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL  FOR UPDATE', $event['id'], $sheet['id']);
         if (!$reservation) {
             $this->dbh->rollback();
 
