@@ -279,7 +279,7 @@ function get_events(PDOWrapper $dbh, ?callable $where = null, $redis = null): ar
     $result = [];
     $events = array_filter($dbh->select_all('SELECT * FROM events ORDER BY id ASC'), $where);
     foreach ($events as $event) {
-        $event = get_event($dbh, $event['id'], null, $event, $redis);
+        $event = get_event_light($dbh, $event['id'], null, $event, $redis);
 
         foreach (array_keys($event['sheets']) as $rank) {
             unset($event['sheets'][$rank]['detail']);
