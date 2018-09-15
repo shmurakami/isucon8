@@ -465,7 +465,8 @@ $app->delete('/api/events/{id}/sheets/{ranks}/{num}/reservation', function (Requ
 
 function validate_rank(PDOWrapper $dbh, $rank)
 {
-    return $dbh->select_one('SELECT COUNT(*) FROM sheets WHERE `rank` = ?', $rank);
+    return in_array($rank,['S','A','B','C']);
+//    return $dbh->select_one('SELECT COUNT(*) FROM sheets WHERE `rank` = ?', $rank);
 }
 
 $admin_login_required = function (Request $request, Response $response, callable $next): Response {
