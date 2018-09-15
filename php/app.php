@@ -35,7 +35,7 @@ $container['dbh'] = function (): PDOWrapper {
 $container['redis'] = function() {
     return new Predis\Client([
         'scheme' => 'tcp',
-        'host'   => '127.0.0.1',
+        'host'   => '172.17.47.2',
         'port'   => 6379,
     ]);
 };
