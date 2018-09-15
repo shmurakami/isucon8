@@ -279,7 +279,7 @@ function get_events(PDOWrapper $dbh, ?callable $where = null, $redis = null): ar
     $result = [];
     $events = array_filter($dbh->select_all('SELECT * FROM events ORDER BY id ASC'), $where);
     foreach ($events as $event) {
-        $event = get_event_light($dbh, $event['id'], null, $event, $redis);
+        $event = get_event($dbh, $event['id'], null, $event, $redis);
 
         foreach (array_keys($event['sheets']) as $rank) {
             unset($event['sheets'][$rank]['detail']);
@@ -324,8 +324,7 @@ function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = n
         ]
 
     ];
-
-    $totalRemains = 0;
+    $totalRemains = 1000;
     foreach ($reservationCounts as $reservationCount) {
         if ($reservationCount['rank'] === 'S') {
             $sheet['S'] = [
@@ -333,7 +332,7 @@ function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = n
                 'remains' => 50 - $reservationCount['reservedCount'],
                 'price' => (int)($event['price'] + $reservationCount['price'])
             ];
-            $totalRemains += 50 - $reservationCount['reservedCount'];
+            $totalRemains -= $reservationCount['reservedCount'];
         }
         if ($reservationCount['rank'] === 'A') {
             $sheet['A'] = [
@@ -341,7 +340,7 @@ function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = n
                 'remains' => 150 - $reservationCount['reservedCount'],
                 'price' => (int)($event['price'] + $reservationCount['price'])
             ];
-            $totalRemains += 150 - $reservationCount['reservedCount'];
+            $totalRemains -= $reservationCount['reservedCount'];
         }
         if ($reservationCount['rank'] === 'B') {
             $sheet['B'] = [
@@ -349,15 +348,15 @@ function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = n
                 'remains' => 300 - $reservationCount['reservedCount'],
                 'price' => (int)($event['price'] + $reservationCount['price'])
             ];
-            $totalRemains += 300 - $reservationCount['reservedCount'];
+            $totalRemains -= $reservationCount['reservedCount'];
         }
-        if ($reservationCount['rank'] === 'c') {
+        if ($reservationCount['rank'] === 'C') {
             $sheet['C'] = [
                 'total' => 500,
                 'remains' => 500 - $reservationCount['reservedCount'],
                 'price' => (int)($event['price'] + $reservationCount['price'])
             ];
-            $totalRemains += 500 - $reservationCount['reservedCount'];
+            $totalRemains -= $reservationCount['reservedCount'];
         }
     }
     $event['total'] = 1000;
