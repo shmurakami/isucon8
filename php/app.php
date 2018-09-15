@@ -11,6 +11,27 @@ define('TWIG_TEMPLATE', realpath(__DIR__).'/views');
 
 $container = $app->getContainer();
 
+$container['dbh'] = function (): PDOWrapper {
+    $database = getenv('DB_DATABASE');
+    $host = getenv('DB_HOST');
+    $port = getenv('DB_PORT');
+    $user = getenv('DB_USER');
+    $password = getenv('DB_PASS');
+
+    $dsn = "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4;";
+    $pdo = new PDO(
+        $dsn,
+        $user,
+        $password,
+        [
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]
+    );
+
+    return new PDOWrapper($pdo);
+};
+
 $container['view'] = function ($container) {
     $view = new \Slim\Views\Twig(TWIG_TEMPLATE);
 
@@ -26,6 +47,17 @@ $container['view'] = function ($container) {
 
     return $view;
 };
+
+$app->get('/initialize', function (Request $request, Response $response): Response {
+    exec('../../db/init.sh');
+
+    // set sheets to redis
+    $sheets = $this->dbh->select_all('SELECT * FROM sheets ORDER BY `rank`, num');
+    $client = new Predis\Client();
+    $client->set('sheets', $sheets);
+
+    return $response->withStatus(204);
+});
 
 $app->add(new \Slim\Middleware\Session([
     'name' => 'torb_session',
@@ -55,27 +87,6 @@ $fillin_user = function (Request $request, Response $response, callable $next): 
     return $next($request, $response);
 };
 
-$container['dbh'] = function (): PDOWrapper {
-    $database = getenv('DB_DATABASE');
-    $host = getenv('DB_HOST');
-    $port = getenv('DB_PORT');
-    $user = getenv('DB_USER');
-    $password = getenv('DB_PASS');
-
-    $dsn = "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4;";
-    $pdo = new PDO(
-        $dsn,
-        $user,
-        $password,
-        [
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        ]
-    );
-
-    return new PDOWrapper($pdo);
-};
-
 $app->get('/', function (Request $request, Response $response): Response {
     $events = array_map(function (array $event) {
         return sanitize_event($event);
@@ -85,12 +96,6 @@ $app->get('/', function (Request $request, Response $response): Response {
         'events' => $events,
     ]);
 })->add($fillin_user);
-
-$app->get('/initialize', function (Request $request, Response $response): Response {
-    exec('../../db/init.sh');
-
-    return $response->withStatus(204);
-});
 
 $app->post('/api/users', function (Request $request, Response $response): Response {
     $nickname = $request->getParsedBodyParam('nickname');
