@@ -279,7 +279,7 @@ function get_events(PDOWrapper $dbh, ?callable $where = null, $redis = null): ar
     $result = [];
     $events = array_filter($dbh->select_all('SELECT * FROM events ORDER BY id ASC'), $where);
     foreach ($events as $event) {
-        $event = get_event($dbh, $event['id'], null, $event, $redis);
+        $event = get_event_light($dbh, $event['id'], null, $event, $redis);
 
         foreach (array_keys($event['sheets']) as $rank) {
             unset($event['sheets'][$rank]['detail']);
@@ -291,6 +291,61 @@ function get_events(PDOWrapper $dbh, ?callable $where = null, $redis = null): ar
     $dbh->commit();
 
     return $result;
+}
+
+function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $event = null, $redis = null): array
+{
+    // zero fill
+    $event['total'] = 0;
+    $event['remains'] = 0;
+
+    $reservationCounts = $dbh->select_all('SELECT count(*) as reservedCount,rank,price FROM reservations join sheets on reservations.sheet_id = sheets.id WHERE event_id = ? AND canceled_at IS NULL group by rank', $event_id);
+
+    $sheet = [];
+    $totalRemains = 0;
+    foreach ($reservationCounts as $reservationCount) {
+        if ($reservationCount['rank'] === 'S') {
+            $sheet['S'] = [
+                'total' => 50,
+                'remains' => 50 - $reservationCount['reservedCount'],
+                'price' => $event['price'] + $reservationCount['price']
+            ];
+            $totalRemains += 50 - $reservationCount['reservedCount'];
+        }
+        if ($reservationCount['rank'] === 'A') {
+            $sheet['A'] = [
+                'total' => 150,
+                'remains' => 150 - $reservationCount['reservedCount'],
+                'price' => $event['price'] + $reservationCount['price']
+            ];
+            $totalRemains += 150 - $reservationCount['reservedCount'];
+        }
+        if ($reservationCount['rank'] === 'B') {
+            $sheet['B'] = [
+                'total' => 300,
+                'remains' => 300 - $reservationCount['reservedCount'],
+                'price' => $event['price'] + $reservationCount['price']
+            ];
+            $totalRemains += 300 - $reservationCount['reservedCount'];
+        }
+        if ($reservationCount['rank'] === 'c') {
+            $sheet['C'] = [
+                'total' => 500,
+                'remains' => 500 - $reservationCount['reservedCount'],
+                'price' => $event['price'] + $reservationCount['price']
+            ];
+            $totalRemains += 500 - $reservationCount['reservedCount'];
+        }
+    }
+    $event['total'] = 1000;
+    $event['remains'] = $totalRemains;
+    $event['sheets'] = $sheet;
+    $event['public'] = $event['public_fg'] ? true : false;
+    $event['closed'] = $event['closed_fg'] ? true : false;
+    unset($event['public_fg']);
+    unset($event['closed_fg']);
+
+    return $event;
 }
 
 function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $event = null, $redis = null): array
