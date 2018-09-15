@@ -167,7 +167,7 @@ $app->get('/api/users/{id}', function (Request $request, Response $response, arr
 
         $rows = $app->dbh->select_all('SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id WHERE r.user_id = ? ORDER BY IFNULL(r.canceled_at, r.reserved_at) DESC LIMIT 5', $user['id']);
         foreach ($rows as $row) {
-            $event = get_event($app->dbh, $row['event_id']);
+            $event = get_event($app->dbh, $row['event_id'], null, null, $this->redis);
             $price = $event['sheets'][$row['sheet_rank']]['price'];
             unset($event['sheets']);
             unset($event['total']);
@@ -200,7 +200,7 @@ $app->get('/api/users/{id}', function (Request $request, Response $response, arr
 
         $rows = $app->dbh->select_all('SELECT event_id FROM reservations WHERE user_id = ? GROUP BY event_id ORDER BY MAX(IFNULL(canceled_at, reserved_at)) DESC LIMIT 5', $user['id']);
         foreach ($rows as $row) {
-            $event = get_event($app->dbh, $row['event_id']);
+            $event = get_event($app->dbh, $row['event_id'], null, null, $this->redis);
             foreach (array_keys($event['sheets']) as $rank) {
                 unset($event['sheets'][$rank]['detail']);
             }
@@ -255,7 +255,7 @@ $app->get('/api/events/{id}', function (Request $request, Response $response, ar
     $event_id = $args['id'];
 
     $user = get_login_user($this);
-    $event = get_event($this->dbh, $event_id, $user['id']);
+    $event = get_event($this->dbh, $event_id, $user['id'], null, $this->redis);
 
     if (empty($event) || !$event['public']) {
         return res_error($response, 'not_found', 404);
@@ -371,7 +371,7 @@ $app->post('/api/events/{id}/actions/reserve', function (Request $request, Respo
     $rank = $request->getParsedBodyParam('sheet_rank');
 
     $user = get_login_user($this);
-    $event = get_event($this->dbh, $event_id, $user['id']);
+    $event = get_event($this->dbh, $event_id, $user['id'], null, $this->redis);
 
     if (empty($event) || !$event['public']) {
         return res_error($response, 'invalid_event', 404);
@@ -416,7 +416,7 @@ $app->delete('/api/events/{id}/sheets/{ranks}/{num}/reservation', function (Requ
     $num = $args['num'];
 
     $user = get_login_user($this);
-    $event = get_event($this->dbh, $event_id, $user['id']);
+    $event = get_event($this->dbh, $event_id, $user['id'], null, $this->redis);
 
     if (empty($event) || !$event['public']) {
         return res_error($response, 'invalid_event', 404);
@@ -556,7 +556,7 @@ $app->post('/admin/api/events', function (Request $request, Response $response):
         $this->dbh->rollback();
     }
 
-    $event = get_event($this->dbh, $event_id);
+    $event = get_event($this->dbh, $event_id, null, null, $this->redis);
 
     return $response->withJson($event, null, JSON_NUMERIC_CHECK);
 })->add($admin_login_required);
@@ -564,7 +564,7 @@ $app->post('/admin/api/events', function (Request $request, Response $response):
 $app->get('/admin/api/events/{id}', function (Request $request, Response $response, array $args): Response {
     $event_id = $args['id'];
 
-    $event = get_event($this->dbh, $event_id);
+    $event = get_event($this->dbh, $event_id, null, null, $this->redis);
     if (empty($event)) {
         return res_error($response, 'not_found', 404);
     }
@@ -581,7 +581,7 @@ $app->post('/admin/api/events/{id}/actions/edit', function (Request $request, Re
         $public = 0;
     }
 
-    $event = get_event($this->dbh, $event_id);
+    $event = get_event($this->dbh, $event_id, null, null, $this->redis);
     if (empty($event)) {
         return res_error($response, 'not_found', 404);
     }
@@ -600,14 +600,14 @@ $app->post('/admin/api/events/{id}/actions/edit', function (Request $request, Re
         $this->dbh->rollback();
     }
 
-    $event = get_event($this->dbh, $event_id);
+    $event = get_event($this->dbh, $event_id, null, null, $this->redis);
 
     return $response->withJson($event, null, JSON_NUMERIC_CHECK);
 })->add($admin_login_required);
 
 $app->get('/admin/api/reports/events/{id}/sales', function (Request $request, Response $response, array $args): Response {
     $event_id = $args['id'];
-    $event = get_event($this->dbh, $event_id);
+    $event = get_event($this->dbh, $event_id, null, null, $this->redis);
 
     $reports = [];
 
