@@ -279,55 +279,18 @@ function get_events(PDOWrapper $dbh, ?callable $where = null, $redis = null): ar
     $result = [];
     $events = array_filter($dbh->select_all('SELECT * FROM events ORDER BY id ASC'), $where);
     foreach ($events as $event) {
-        $event = get_event_light($dbh, $event['id'], null, $event, $redis);
+        $event = get_event($dbh, $event['id'], null, $event, $redis);
+
+        foreach (array_keys($event['sheets']) as $rank) {
+            unset($event['sheets'][$rank]['detail']);
+        }
+
         $result[] = $event;
     }
 
     $dbh->commit();
 
     return $result;
-}
-
-function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $event = null, $redis = null): array
-{
-    if (!$event) {
-        $event = $dbh->select_row('SELECT * FROM events WHERE id = ?', $event_id);
-        if (!$event) {
-            return [];
-        }
-    }
-
-    $event['id'] = (int) $event['id'];
-
-    // zero fill
-    $event['total'] = 0;
-    $event['remains'] = 0;
-
-    foreach (['S', 'A', 'B', 'C'] as $rank) {
-        $event['sheets'][$rank]['total'] = 0;
-        $event['sheets'][$rank]['remains'] = 0;
-    }
-
-    if ($redis) {
-        $sheets = json_decode($redis->get('sheets'), true);
-    } else {
-        $sheets = $dbh->select_all('SELECT * FROM sheets ORDER BY `rank`, num');
-    }
-
-    foreach ($sheets as $sheet) {
-        $event['sheets'][$sheet['rank']]['price'] = $event['sheets'][$sheet['rank']]['price'] ?? $event['price'] + $sheet['price'];
-
-        ++$event['total'];
-        ++$event['sheets'][$sheet['rank']]['total'];
-    }
-
-    $event['public'] = $event['public_fg'] ? true : false;
-    $event['closed'] = $event['closed_fg'] ? true : false;
-
-    unset($event['public_fg']);
-    unset($event['closed_fg']);
-
-    return $event;
 }
 
 function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $event = null, $redis = null): array
