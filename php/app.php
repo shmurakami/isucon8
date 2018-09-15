@@ -293,6 +293,25 @@ function get_events(PDOWrapper $dbh, ?callable $where = null, $redis = null): ar
     return $result;
 }
 
+function get_event_row(PDOWrapper $dbh, int $event_id)
+{
+    $event = $dbh->select_row('SELECT * FROM events WHERE id = ?', $event_id);
+    if (!$event) {
+        return [];
+    }
+
+    $event['total'] = 0;
+    $event['remains'] = 0;
+
+    $event['public'] = $event['public_fg'] ? true : false;
+    $event['closed'] = $event['closed_fg'] ? true : false;
+
+    unset($event['public_fg']);
+    unset($event['closed_fg']);
+
+    return $event;
+}
+
 function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $event = null, $redis = null): array
 {
     if (!$event) {
@@ -371,7 +390,8 @@ $app->post('/api/events/{id}/actions/reserve', function (Request $request, Respo
     $rank = $request->getParsedBodyParam('sheet_rank');
 
     $user = get_login_user($this);
-    $event = get_event($this->dbh, $event_id, $user['id'], null, $this->redis);
+//    $event = get_event($this->dbh, $event_id, $user['id'], null, $this->redis);
+    $event = get_event_row($this->dbh, $event_id);
 
     if (empty($event) || !$event['public']) {
         return res_error($response, 'invalid_event', 404);
@@ -416,7 +436,8 @@ $app->delete('/api/events/{id}/sheets/{ranks}/{num}/reservation', function (Requ
     $num = $args['num'];
 
     $user = get_login_user($this);
-    $event = get_event($this->dbh, $event_id, $user['id'], null, $this->redis);
+//    $event = get_event($this->dbh, $event_id, $user['id'], null, $this->redis);
+    $event = get_event_row($this->dbh, $event_id);
 
     if (empty($event) || !$event['public']) {
         return res_error($response, 'invalid_event', 404);
