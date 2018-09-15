@@ -61,7 +61,7 @@ $app->get('/initialize', function (Request $request, Response $response): Respon
 
     // set sheets to redis
     $sheets = $this->dbh->select_all('SELECT * FROM sheets ORDER BY `rank`, num');
-    $this->redis->set('sheets', json_encode($sheets));
+    $this->redis->set('sheets', serialize($sheets));
 
     return $response->withStatus(204);
 });
@@ -314,7 +314,7 @@ function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $
     }
 
     if ($redis) {
-        $sheets = json_decode($redis->get('sheets'), true);
+        $sheets = unserialize($redis->get('sheets'));
     } else {
         $sheets = $dbh->select_all('SELECT * FROM sheets ORDER BY `rank`, num');
     }
