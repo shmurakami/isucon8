@@ -56,7 +56,7 @@ $container['view'] = function ($container) {
     return $view;
 };
 
-$app->get('/initialize', function (Request $request, Response $response) use ($redis) : Response {
+$app->get('/initialize', function (Request $request, Response $response): Response {
     exec('../../db/init.sh');
 
     // set sheets to redis
