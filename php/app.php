@@ -7,7 +7,7 @@ use Psr\Container\ContainerInterface;
 use SlimSession\Helper;
 
 date_default_timezone_set('Asia/Tokyo');
-define('TWIG_TEMPLATE', realpath(__DIR__).'/views');
+define('TWIG_TEMPLATE', realpath(__DIR__) . '/views');
 
 $container = $app->getContainer();
 
@@ -32,11 +32,11 @@ $container['dbh'] = function (): PDOWrapper {
     return new PDOWrapper($pdo);
 };
 
-$container['redis'] = function() {
+$container['redis'] = function () {
     return new Predis\Client([
         'scheme' => 'tcp',
-        'host'   => '172.17.47.2',
-        'port'   => 6379,
+        'host' => '172.17.47.2',
+        'port' => 6379,
     ]);
 };
 
@@ -44,11 +44,11 @@ $container['view'] = function ($container) {
     $view = new \Slim\Views\Twig(TWIG_TEMPLATE);
 
     $baseUrl = function (\Slim\Http\Request $request): string {
-      if ($request->hasHeader('Host')) {
-        return $request->getUri()->getScheme().'://'.$request->getHeaderLine('Host');
-      }
+        if ($request->hasHeader('Host')) {
+            return $request->getUri()->getScheme() . '://' . $request->getHeaderLine('Host');
+        }
 
-      return $request->getUri()->getBaseUrl();
+        return $request->getUri()->getBaseUrl();
     };
 
     $view->addExtension(new \Slim\Views\TwigExtension($container['router'], $baseUrl($container['request'])));
@@ -151,13 +151,13 @@ function get_login_user(ContainerInterface $app)
     }
 
     $user = $app->dbh->select_row('SELECT id, nickname FROM users WHERE id = ?', $user_id);
-    $user['id'] = (int) $user['id'];
+    $user['id'] = (int)$user['id'];
     return $user;
 }
 
 $app->get('/api/users/{id}', function (Request $request, Response $response, array $args): Response {
     $user = $this->dbh->select_row('SELECT id, nickname FROM users WHERE id = ?', $args['id']);
-    $user['id'] = (int) $user['id'];
+    $user['id'] = (int)$user['id'];
     if (!$user || $user['id'] !== get_login_user($this)['id']) {
         return res_error($response, 'forbidden', 403);
     }
@@ -302,25 +302,25 @@ function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = n
     $reservationCounts = $dbh->select_all('SELECT count(*) as reservedCount,rank,price FROM reservations join sheets on reservations.sheet_id = sheets.id WHERE event_id = ? AND canceled_at IS NULL group by rank', $event_id);
 
     $sheet = [
-        'S' =>[
+        'S' => [
             'total' => 50,
             'remains' => 50,
-            'price' => $event['price'] + 5000
+            'price' => (int)($event['price'] + 5000)
         ],
-        'A' =>[
+        'A' => [
             'total' => 150,
             'remains' => 150,
-            'price' => $event['price'] + 3000
+            'price' => (int)($event['price'] + 3000)
         ],
-        'B' =>[
+        'B' => [
             'total' => 350,
             'remains' => 350,
-            'price' => $event['price'] + 1000
+            'price' => (int)($event['price'] + 1000)
         ],
-        'C' =>[
+        'C' => [
             'total' => 500,
             'remains' => 500,
-            'price' => $event['price']
+            'price' => (int)($event['price'])
         ]
 
     ];
@@ -331,7 +331,7 @@ function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = n
             $sheet['S'] = [
                 'total' => 50,
                 'remains' => 50 - $reservationCount['reservedCount'],
-                'price' => $event['price'] + $reservationCount['price']
+                'price' => (int)($event['price'] + $reservationCount['price'])
             ];
             $totalRemains += 50 - $reservationCount['reservedCount'];
         }
@@ -339,7 +339,7 @@ function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = n
             $sheet['A'] = [
                 'total' => 150,
                 'remains' => 150 - $reservationCount['reservedCount'],
-                'price' => $event['price'] + $reservationCount['price']
+                'price' => (int)($event['price'] + $reservationCount['price'])
             ];
             $totalRemains += 150 - $reservationCount['reservedCount'];
         }
@@ -347,7 +347,7 @@ function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = n
             $sheet['B'] = [
                 'total' => 300,
                 'remains' => 300 - $reservationCount['reservedCount'],
-                'price' => $event['price'] + $reservationCount['price']
+                'price' => (int)($event['price'] + $reservationCount['price'])
             ];
             $totalRemains += 300 - $reservationCount['reservedCount'];
         }
@@ -355,13 +355,13 @@ function get_event_light(PDOWrapper $dbh, int $event_id, ?int $login_user_id = n
             $sheet['C'] = [
                 'total' => 500,
                 'remains' => 500 - $reservationCount['reservedCount'],
-                'price' => $event['price'] + $reservationCount['price']
+                'price' => (int)($event['price'] + $reservationCount['price'])
             ];
             $totalRemains += 500 - $reservationCount['reservedCount'];
         }
     }
     $event['total'] = 1000;
-    $event['remains'] = $totalRemains;
+    $event['remains'] = (int)$totalRemains;
     $event['sheets'] = $sheet;
     $event['public'] = $event['public_fg'] ? true : false;
     $event['closed'] = $event['closed_fg'] ? true : false;
@@ -380,7 +380,7 @@ function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $
         }
     }
 
-    $event['id'] = (int) $event['id'];
+    $event['id'] = (int)$event['id'];
 
     // zero fill
     $event['total'] = 0;
@@ -477,7 +477,7 @@ $app->post('/api/events/{id}/actions/reserve', function (Request $request, Respo
         $this->dbh->beginTransaction();
         try {
             $this->dbh->execute('INSERT INTO reservations (event_id, sheet_id, user_id, reserved_at) VALUES (?, ?, ?, ?)', $event['id'], $sheet['id'], $user['id'], (new DateTime('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s.u'));
-            $reservation_id = (int) $this->dbh->last_insert_id();
+            $reservation_id = (int)$this->dbh->last_insert_id();
 
             $this->dbh->commit();
         } catch (\Exception $e) {
@@ -544,7 +544,7 @@ $app->delete('/api/events/{id}/sheets/{ranks}/{num}/reservation', function (Requ
 
 function validate_rank(PDOWrapper $dbh, $rank)
 {
-    return in_array($rank,['S','A','B','C']);
+    return in_array($rank, ['S', 'A', 'B', 'C']);
 //    return $dbh->select_one('SELECT COUNT(*) FROM sheets WHERE `rank` = ?', $rank);
 }
 
@@ -567,7 +567,9 @@ $fillin_administrator = function (Request $request, Response $response, callable
 };
 
 $app->get('/admin/', function (Request $request, Response $response) {
-    $events = get_events($this->dbh, function ($event) { return $event; });
+    $events = get_events($this->dbh, function ($event) {
+        return $event;
+    });
 
     return $this->view->render($response, 'admin.twig', [
         'events' => $events,
@@ -601,7 +603,7 @@ $app->post('/admin/api/actions/logout', function (Request $request, Response $re
 })->add($admin_login_required);
 
 /**
- * @param ContainerInterface $app*
+ * @param ContainerInterface $app *
  *
  * @return bool|array
  */
@@ -615,12 +617,14 @@ function get_login_administrator(ContainerInterface $app)
     }
 
     $administrator = $app->dbh->select_row('SELECT id, nickname FROM administrators WHERE id = ?', $administrator_id);
-    $administrator['id'] = (int) $administrator['id'];
+    $administrator['id'] = (int)$administrator['id'];
     return $administrator;
 }
 
 $app->get('/admin/api/events', function (Request $request, Response $response): Response {
-    $events = get_events($this->dbh, function ($event) { return $event; });
+    $events = get_events($this->dbh, function ($event) {
+        return $event;
+    });
 
     return $response->withJson($events, null, JSON_NUMERIC_CHECK);
 })->add($admin_login_required);
@@ -704,8 +708,8 @@ $app->get('/admin/api/reports/events/{id}/sales', function (Request $request, Re
             'rank' => $reservation['sheet_rank'],
             'num' => $reservation['sheet_num'],
             'user_id' => $reservation['user_id'],
-            'sold_at' => (new \DateTime("{$reservation['reserved_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u').'Z',
-            'canceled_at' => $reservation['canceled_at'] ? (new \DateTime("{$reservation['canceled_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u').'Z' : '',
+            'sold_at' => (new \DateTime("{$reservation['reserved_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u') . 'Z',
+            'canceled_at' => $reservation['canceled_at'] ? (new \DateTime("{$reservation['canceled_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u') . 'Z' : '',
             'price' => $reservation['event_price'] + $reservation['sheet_price'],
         ];
 
@@ -725,8 +729,8 @@ $app->get('/admin/api/reports/sales', function (Request $request, Response $resp
             'rank' => $reservation['sheet_rank'],
             'num' => $reservation['sheet_num'],
             'user_id' => $reservation['user_id'],
-            'sold_at' => (new \DateTime("{$reservation['reserved_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u').'Z',
-            'canceled_at' => $reservation['canceled_at'] ? (new \DateTime("{$reservation['canceled_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u').'Z' : '',
+            'sold_at' => (new \DateTime("{$reservation['reserved_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u') . 'Z',
+            'canceled_at' => $reservation['canceled_at'] ? (new \DateTime("{$reservation['canceled_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u') . 'Z' : '',
             'price' => $reservation['event_price'] + $reservation['sheet_price'],
         ];
 
@@ -738,7 +742,9 @@ $app->get('/admin/api/reports/sales', function (Request $request, Response $resp
 
 function render_report_csv(Response $response, array $reports): Response
 {
-    usort($reports, function ($a, $b) { return $a['sold_at'] > $b['sold_at']; });
+    usort($reports, function ($a, $b) {
+        return $a['sold_at'] > $b['sold_at'];
+    });
 
     $keys = ['reservation_id', 'event_id', 'rank', 'num', 'price', 'user_id', 'sold_at', 'canceled_at'];
     $body = implode(',', $keys);
