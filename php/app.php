@@ -276,16 +276,13 @@ function get_events(PDOWrapper $dbh, ?callable $where = null, $redis = null): ar
 
     $dbh->beginTransaction();
 
-//    $event_ids = array_map(function (array $event) {
-//        return $event['id'];
-//    }, );
+    $events = [];
+    $event_ids = array_map(function (array $event) {
+        return $event['id'];
+    }, array_filter($dbh->select_all('SELECT * FROM events ORDER BY id ASC'), $where));
 
-    $events = array_filter($dbh->select_all('SELECT * FROM events ORDER BY id ASC'), $where);
-
-    foreach ($events as $event) {
-
-//    foreach ($event_ids as $event_id) {
-        $event = get_event($dbh, $event['id'], null, $event, $redis);
+    foreach ($event_ids as $event_id) {
+        $event = get_event($dbh, $event_id, null, $redis);
 
         foreach (array_keys($event['sheets']) as $rank) {
             unset($event['sheets'][$rank]['detail']);
@@ -299,13 +296,12 @@ function get_events(PDOWrapper $dbh, ?callable $where = null, $redis = null): ar
     return $events;
 }
 
-function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $event = null, $redis = null): array
+function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $redis = null): array
 {
+    $event = $dbh->select_row('SELECT * FROM events WHERE id = ?', $event_id);
+
     if (!$event) {
-        $event = $dbh->select_row('SELECT * FROM events WHERE id = ?', $event_id);
-        if (!$event) {
-            return [];
-        }
+        return [];
     }
 
     $event['id'] = (int) $event['id'];
