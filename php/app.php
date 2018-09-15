@@ -316,7 +316,7 @@ function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $
     }
 
     if ($redis) {
-        $sheets = json_decode($redis->get('sheets'));
+        $sheets = json_decode($redis->get('sheets'), true);
     } else {
         $sheets = $dbh->select_all('SELECT * FROM sheets ORDER BY `rank`, num');
     }
