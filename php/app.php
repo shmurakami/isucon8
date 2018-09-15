@@ -12,11 +12,11 @@ define('TWIG_TEMPLATE', realpath(__DIR__).'/views');
 $container = $app->getContainer();
 
 $container['dbh'] = function (): PDOWrapper {
-    $database = getenv('DB_DATABASE');
-    $host = getenv('DB_HOST');
-    $port = getenv('DB_PORT');
-    $user = getenv('DB_USER');
-    $password = getenv('DB_PASS');
+    $database = 'torb';
+    $host = '172.17.47.2'; //server2
+    $port = 3306;
+    $user = 'isucon';
+    $password = 'isucon';
 
     $dsn = "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4;";
     $pdo = new PDO(
