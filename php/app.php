@@ -276,15 +276,9 @@ function get_events(PDOWrapper $dbh, ?callable $where = null, $redis = null): ar
 
     $dbh->beginTransaction();
 
-//    $event_ids = array_map(function (array $event) {
-//        return $event['id'];
-//    }, array_filter($dbh->select_all('SELECT * FROM events ORDER BY id ASC'), $where));
-
     $result = [];
     $events = array_filter($dbh->select_all('SELECT * FROM events ORDER BY id ASC'), $where);
     foreach ($events as $event) {
-//    foreach ($event_ids as $event_id) {
-//        $event = get_event($dbh, $event_id, null, $redis);
         $event = get_event($dbh, $event['id'], null, $event, $redis);
 
         foreach (array_keys($event['sheets']) as $rank) {
