@@ -319,13 +319,21 @@ function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $
         $sheets = $dbh->select_all('SELECT * FROM sheets ORDER BY `rank`, num');
     }
 
+    $reservations_result = $dbh->select_all('SELECT * FROM reservations WHERE event_id = ? AND canceled_at IS NULL', $event['id']);
+    $reservations = [];
+    foreach ($reservations_result as $reservation) {
+        $sheetId = $reservation['sheet_id'];
+        $reservations[$sheetId] = $reservation;
+    }
+
     foreach ($sheets as $sheet) {
         $event['sheets'][$sheet['rank']]['price'] = $event['sheets'][$sheet['rank']]['price'] ?? $event['price'] + $sheet['price'];
 
         ++$event['total'];
         ++$event['sheets'][$sheet['rank']]['total'];
 
-        $reservation = $dbh->select_row('SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL', $event['id'], $sheet['id']);
+        $reservation = $reservations[$sheet['id']] ?? null;
+//        $reservation = $dbh->select_row('SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL', $event['id'], $sheet['id']);
         if ($reservation) {
             $sheet['mine'] = $login_user_id && $reservation['user_id'] == $login_user_id;
             $sheet['reserved'] = true;
@@ -335,7 +343,6 @@ function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $
             ++$event['sheets'][$sheet['rank']]['remains'];
         }
 
-        $sheet['num'] = $sheet['num'];
         $rank = $sheet['rank'];
         unset($sheet['id']);
         unset($sheet['price']);
