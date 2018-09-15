@@ -63,6 +63,8 @@ $app->get('/initialize', function (Request $request, Response $response): Respon
     $sheets = $this->dbh->select_all('SELECT * FROM sheets ORDER BY `rank`, num');
     $this->redis->set('sheets', serialize($sheets));
 
+    $this->redis->set('all_sales', null);
+
     return $response->withStatus(204);
 });
 
@@ -639,20 +641,28 @@ $app->get('/admin/api/reports/events/{id}/sales', function (Request $request, Re
 
 $app->get('/admin/api/reports/sales', function (Request $request, Response $response): Response {
     $reports = [];
-    $reservations = $this->dbh->select_all('SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.id AS event_id, e.price AS event_price FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id INNER JOIN events e ON e.id = r.event_id ORDER BY reserved_at ASC FOR UPDATE');
-    foreach ($reservations as $reservation) {
-        $report = [
-            'reservation_id' => $reservation['id'],
-            'event_id' => $reservation['event_id'],
-            'rank' => $reservation['sheet_rank'],
-            'num' => $reservation['sheet_num'],
-            'user_id' => $reservation['user_id'],
-            'sold_at' => (new \DateTime("{$reservation['reserved_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u').'Z',
-            'canceled_at' => $reservation['canceled_at'] ? (new \DateTime("{$reservation['canceled_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u').'Z' : '',
-            'price' => $reservation['event_price'] + $reservation['sheet_price'],
-        ];
 
-        array_push($reports, $report);
+    $cached = $this->redis->get('all_sales');
+    if ($cached) {
+        $reports = unserialize($cached);
+
+    } else {
+        $reservations = $this->dbh->select_all('SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.id AS event_id, e.price AS event_price FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id INNER JOIN events e ON e.id = r.event_id ORDER BY reserved_at ASC FOR UPDATE');
+        foreach ($reservations as $reservation) {
+            $report = [
+                'reservation_id' => $reservation['id'],
+                'event_id' => $reservation['event_id'],
+                'rank' => $reservation['sheet_rank'],
+                'num' => $reservation['sheet_num'],
+                'user_id' => $reservation['user_id'],
+                'sold_at' => (new \DateTime("{$reservation['reserved_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u').'Z',
+                'canceled_at' => $reservation['canceled_at'] ? (new \DateTime("{$reservation['canceled_at']}", new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u').'Z' : '',
+                'price' => $reservation['event_price'] + $reservation['sheet_price'],
+            ];
+            $reports[] = $report;
+        }
+
+        $this->redis->set('all_sales', serialize($reports));
     }
 
     return render_report_csv($response, $reports);
