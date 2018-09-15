@@ -327,7 +327,7 @@ function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $
         ++$event['total'];
         ++$event['sheets'][$sheet['rank']]['total'];
 
-        $reservation = $dbh->select_row('SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL GROUP BY event_id, sheet_id HAVING reserved_at = MIN(reserved_at)', $event['id'], $sheet['id']);
+        $reservation = $dbh->select_row('SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL', $event['id'], $sheet['id']);
         if ($reservation) {
             $sheet['mine'] = $login_user_id && $reservation['user_id'] == $login_user_id;
             $sheet['reserved'] = true;
@@ -386,7 +386,7 @@ $app->post('/api/events/{id}/actions/reserve', function (Request $request, Respo
     $sheet = null;
     $reservation_id = null;
     while (true) {
-        $sheet = $this->dbh->select_row('SELECT * FROM sheets WHERE id NOT IN (SELECT sheet_id FROM reservations WHERE event_id = ? AND canceled_at IS NULL FOR UPDATE) AND `rank` = ? ORDER BY RAND() LIMIT 1', $event['id'], $rank);
+        $sheet = $this->dbh->select_row('SELECT * FROM sheets WHERE id NOT IN (SELECT sheet_id FROM reservations WHERE event_id = ? AND canceled_at IS NULL FOR UPDATE) AND `rank` = ? LIMIT 1', $event['id'], $rank);
         if (!$sheet) {
             return res_error($response, 'sold_out', 409);
         }
@@ -435,7 +435,7 @@ $app->delete('/api/events/{id}/sheets/{ranks}/{num}/reservation', function (Requ
 
     $this->dbh->beginTransaction();
     try {
-        $reservation = $this->dbh->select_row('SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL GROUP BY event_id HAVING reserved_at = MIN(reserved_at) FOR UPDATE', $event['id'], $sheet['id']);
+        $reservation = $this->dbh->select_row('SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL  FOR UPDATE', $event['id'], $sheet['id']);
         if (!$reservation) {
             $this->dbh->rollback();
 
