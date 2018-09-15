@@ -41,6 +41,7 @@ class ComposerStaticInite5aceb72d825c80b685688a5bec22427
             'Psr\\Log\\' => 8,
             'Psr\\Http\\Message\\' => 17,
             'Psr\\Container\\' => 14,
+            'Predis\\' => 7,
             'PhpCsFixer\\' => 11,
         ),
         'I' => 
@@ -139,6 +140,10 @@ class ComposerStaticInite5aceb72d825c80b685688a5bec22427
         'Psr\\Container\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/container/src',
+        ),
+        'Predis\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/predis/predis/src',
         ),
         'PhpCsFixer\\' => 
         array (

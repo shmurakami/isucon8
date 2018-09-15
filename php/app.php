@@ -11,6 +11,35 @@ define('TWIG_TEMPLATE', realpath(__DIR__).'/views');
 
 $container = $app->getContainer();
 
+$container['dbh'] = function (): PDOWrapper {
+    $database = getenv('DB_DATABASE');
+    $host = getenv('DB_HOST');
+    $port = getenv('DB_PORT');
+    $user = getenv('DB_USER');
+    $password = getenv('DB_PASS');
+
+    $dsn = "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4;";
+    $pdo = new PDO(
+        $dsn,
+        $user,
+        $password,
+        [
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]
+    );
+
+    return new PDOWrapper($pdo);
+};
+
+$container['redis'] = function() {
+    return new Predis\Client([
+        'scheme' => 'tcp',
+        'host'   => '127.0.0.1',
+        'port'   => 6379,
+    ]);
+};
+
 $container['view'] = function ($container) {
     $view = new \Slim\Views\Twig(TWIG_TEMPLATE);
 
@@ -26,6 +55,16 @@ $container['view'] = function ($container) {
 
     return $view;
 };
+
+$app->get('/initialize', function (Request $request, Response $response): Response {
+    exec('../../db/init.sh');
+
+    // set sheets to redis
+    $sheets = $this->dbh->select_all('SELECT * FROM sheets ORDER BY `rank`, num');
+    $this->redis->set('sheets', json_encode($sheets));
+
+    return $response->withStatus(204);
+});
 
 $app->add(new \Slim\Middleware\Session([
     'name' => 'torb_session',
@@ -55,42 +94,15 @@ $fillin_user = function (Request $request, Response $response, callable $next): 
     return $next($request, $response);
 };
 
-$container['dbh'] = function (): PDOWrapper {
-    $database = getenv('DB_DATABASE');
-    $host = getenv('DB_HOST');
-    $port = getenv('DB_PORT');
-    $user = getenv('DB_USER');
-    $password = getenv('DB_PASS');
-
-    $dsn = "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4;";
-    $pdo = new PDO(
-        $dsn,
-        $user,
-        $password,
-        [
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        ]
-    );
-
-    return new PDOWrapper($pdo);
-};
-
 $app->get('/', function (Request $request, Response $response): Response {
     $events = array_map(function (array $event) {
         return sanitize_event($event);
-    }, get_events($this->dbh));
+    }, get_events($this->dbh, null, $this->redis));
 
     return $this->view->render($response, 'index.twig', [
         'events' => $events,
     ]);
 })->add($fillin_user);
-
-$app->get('/initialize', function (Request $request, Response $response): Response {
-    exec('../../db/init.sh');
-
-    return $response->withStatus(204);
-});
 
 $app->post('/api/users', function (Request $request, Response $response): Response {
     $nickname = $request->getParsedBodyParam('nickname');
@@ -254,7 +266,7 @@ $app->get('/api/events/{id}', function (Request $request, Response $response, ar
     return $response->withJson($event, null, JSON_NUMERIC_CHECK);
 });
 
-function get_events(PDOWrapper $dbh, ?callable $where = null): array
+function get_events(PDOWrapper $dbh, ?callable $where = null, $redis = null): array
 {
     if (null === $where) {
         $where = function (array $event) {
@@ -270,7 +282,7 @@ function get_events(PDOWrapper $dbh, ?callable $where = null): array
     }, array_filter($dbh->select_all('SELECT * FROM events ORDER BY id ASC'), $where));
 
     foreach ($event_ids as $event_id) {
-        $event = get_event($dbh, $event_id);
+        $event = get_event($dbh, $event_id, null, $redis);
 
         foreach (array_keys($event['sheets']) as $rank) {
             unset($event['sheets'][$rank]['detail']);
@@ -284,7 +296,7 @@ function get_events(PDOWrapper $dbh, ?callable $where = null): array
     return $events;
 }
 
-function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null): array
+function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null, $redis = null): array
 {
     $event = $dbh->select_row('SELECT * FROM events WHERE id = ?', $event_id);
 
@@ -303,7 +315,12 @@ function get_event(PDOWrapper $dbh, int $event_id, ?int $login_user_id = null): 
         $event['sheets'][$rank]['remains'] = 0;
     }
 
-    $sheets = $dbh->select_all('SELECT * FROM sheets ORDER BY `rank`, num');
+    if ($redis) {
+        $sheets = json_decode($redis->get('sheets'));
+    } else {
+        $sheets = $dbh->select_all('SELECT * FROM sheets ORDER BY `rank`, num');
+    }
+
     foreach ($sheets as $sheet) {
         $event['sheets'][$sheet['rank']]['price'] = $event['sheets'][$sheet['rank']]['price'] ?? $event['price'] + $sheet['price'];
 
