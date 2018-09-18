@@ -391,7 +391,7 @@ $app->post('/api/events/{id}/actions/reserve', function (Request $request, Respo
     $sheet = null;
     $reservation_id = null;
     while (true) {
-        $sheet = $this->dbh->select_row('SELECT * FROM sheets WHERE id NOT IN (SELECT sheet_id FROM reservations WHERE event_id = ? AND canceled_at IS NULL FOR UPDATE) AND `rank` = ? ORDER BY RAND() LIMIT 1', $event['id'], $rank);
+        $sheet = $this->dbh->select_row('SELECT * FROM sheets WHERE id NOT IN (SELECT sheet_id FROM reservations WHERE event_id = ? AND canceled_at IS NULL ) AND `rank` = ? ORDER BY RAND() LIMIT 1', $event['id'], $rank);
         if (!$sheet) {
             return res_error($response, 'sold_out', 409);
         }
