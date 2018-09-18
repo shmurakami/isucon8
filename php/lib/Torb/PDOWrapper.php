@@ -45,6 +45,16 @@ class PDOWrapper
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function select_by_generator(string $query, ...$params): \Generator
+    {
+        $stmt = $this->pdo->prepare($query);
+        $stmt->execute($params);
+
+        while (true) {
+            yield $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+    }
+
     /**
      * @param string $query
      * @param mixed  ...$params

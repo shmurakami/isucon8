@@ -639,7 +639,8 @@ $app->get('/admin/api/reports/events/{id}/sales', function (Request $request, Re
 
 $app->get('/admin/api/reports/sales', function (Request $request, Response $response): Response {
     $reports = [];
-    $reservations = $this->dbh->select_all('SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.id AS event_id, e.price AS event_price FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id INNER JOIN events e ON e.id = r.event_id ORDER BY reserved_at ASC FOR UPDATE');
+//    $reservations = $this->dbh->select_all('SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.id AS event_id, e.price AS event_price FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id INNER JOIN events e ON e.id = r.event_id ORDER BY reserved_at ASC FOR UPDATE');
+    $reservations = $this->dbh->select_by_generator('SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.id AS event_id, e.price AS event_price FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id INNER JOIN events e ON e.id = r.event_id ORDER BY reserved_at ASC FOR UPDATE');
     foreach ($reservations as $reservation) {
         $report = [
             'reservation_id' => $reservation['id'],
@@ -652,7 +653,7 @@ $app->get('/admin/api/reports/sales', function (Request $request, Response $resp
             'price' => $reservation['event_price'] + $reservation['sheet_price'],
         ];
 
-        array_push($reports, $report);
+        $reports[] = $report;
     }
 
     return render_report_csv($response, $reports);
