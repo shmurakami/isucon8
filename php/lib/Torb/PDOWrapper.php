@@ -50,8 +50,8 @@ class PDOWrapper
         $stmt = $this->pdo->prepare($query);
         $stmt->execute($params);
 
-        while (true) {
-            yield $stmt->fetch(PDO::FETCH_ASSOC);
+        while($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            yield $row;
         }
     }
 
